@@ -11,10 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+      # No cache: the export carries no lockfile, so setup-node cannot key one.
       - uses: actions/setup-node@v4
         with:
           node-version: 24.22.1
-          cache: pnpm
 
       # No lockfile is exported: the public tree is replaced wholesale on every
       # sync, so it cannot carry one. Resolve fresh here.
