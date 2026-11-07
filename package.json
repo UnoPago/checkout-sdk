@@ -1,0 +1,91 @@
+{
+  "name": "@unopago/checkout-sdk",
+  "version": "1.0.0",
+  "description": "Typed client for UnoPago Checkout: REST checkout sessions, the embedded iframe and webhook signature verification.",
+  "license": "MIT",
+  "author": "UnoPago",
+  "homepage": "https://github.com/UnoPago/checkout-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UnoPago/checkout-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/UnoPago/checkout-sdk/issues"
+  },
+  "keywords": [
+    "unopago",
+    "checkout",
+    "payments",
+    "sdk",
+    "webhooks"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "packageManager": "pnpm@11.24.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./embed": {
+      "types": "./dist/embed/index.d.ts",
+      "import": "./dist/embed/index.js",
+      "require": "./dist/embed/index.js",
+      "default": "./dist/embed/index.js"
+    },
+    "./webhooks": {
+      "types": "./dist/webhooks/index.d.ts",
+      "import": "./dist/webhooks/index.js",
+      "require": "./dist/webhooks/index.js",
+      "default": "./dist/webhooks/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.25.1",
+    "@types/node": "24.10.8",
+    "eslint": "9.25.1",
+    "jsdom": "^25.0.0",
+    "prettier": "3.5.3",
+    "tsdown": "0.23.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vitest": "4.1.5"
+  },
+  "prettier": {
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": false,
+    "arrowParens": "always",
+    "endOfLine": "auto",
+    "trailingComma": "all",
+    "overrides": [
+      {
+        "files": "*.md",
+        "options": {
+          "printWidth": 100
+        }
+      }
+    ]
+  }
+}
