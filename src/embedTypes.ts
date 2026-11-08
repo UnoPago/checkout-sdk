@@ -21,7 +21,8 @@ export type CheckoutEmbedMessage =
 export type CheckoutEmbedMountOptions = {
   /**
    * The signed URL from `checkoutSessions.create()`'s `iframeUrl`. Treat it as
-   * opaque: the SDK never parses, stores, or logs it.
+   * opaque: the SDK only reads it to validate the protocol and derive the
+   * iframe's origin, and never stores or logs it.
    */
   iframeUrl: string;
   /** The iframe's accessible title. Defaults to `"Pago"`. */

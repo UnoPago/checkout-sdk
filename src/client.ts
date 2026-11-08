@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import { checkoutApiErrorFromResponse } from "./errors";
+import { isLoopbackHost } from "./hosts";
 import {
   checkoutSessionListSchema,
   checkoutSessionSchema,
@@ -42,17 +43,38 @@ type RequestOptions = {
   body?: unknown;
 };
 
+/** Throws for a base URL that would send the API key in clear. */
+function assertSafeBaseUrl(baseUrl: string): void {
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    throw new Error(`baseUrl must be an absolute URL, got ${baseUrl}`);
+  }
+  if (
+    url.protocol !== "https:" &&
+    !(url.protocol === "http:" && isLoopbackHost(url.hostname))
+  ) {
+    throw new Error(
+      `baseUrl must use https (http is allowed only for loopback hosts), got ${url.protocol}`,
+    );
+  }
+}
+
 /** The four `/v1/checkout-sessions` endpoints. */
 export class CheckoutClient {
   readonly checkoutSessions: CheckoutSessionsResource;
 
   constructor(options: CheckoutClientOptions) {
+    const baseUrl = (options.baseUrl ?? DEFAULT_CHECKOUT_API_BASE_URL).replace(
+      /\/+$/,
+      "",
+    );
+    assertSafeBaseUrl(baseUrl);
+
     this.checkoutSessions = new CheckoutSessionsResource({
       apiKey: options.apiKey,
-      baseUrl: (options.baseUrl ?? DEFAULT_CHECKOUT_API_BASE_URL).replace(
-        /\/+$/,
-        "",
-      ),
+      baseUrl,
       fetch: options.fetch ?? fetch,
     });
   }

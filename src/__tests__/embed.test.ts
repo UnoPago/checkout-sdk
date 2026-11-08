@@ -46,6 +46,7 @@ describe("mountCheckoutEmbed", () => {
     expect(frame.getAttribute("sandbox")).toBe(
       "allow-forms allow-same-origin allow-scripts",
     );
+    expect(frame.getAttribute("allow")).toBe("clipboard-write");
     expect(frame.style.width).toBe("100%");
     expect(frame.style.border).toBe("0px");
   });
@@ -223,5 +224,21 @@ describe("mountCheckoutEmbed", () => {
     }
 
     expect(getContainer().children).toHaveLength(0);
+  });
+
+  test("allows http only on loopback hosts", () => {
+    const loopback = mountCheckoutEmbed(getContainer(), {
+      iframeUrl: "http://localhost:3100/embed/pay/token?sig=abc",
+    });
+    expect(loopback.iframe.getAttribute("src")).toBe(
+      "http://localhost:3100/embed/pay/token?sig=abc",
+    );
+    loopback.unmount();
+
+    expect(() =>
+      mountCheckoutEmbed(getContainer(), {
+        iframeUrl: "http://checkout.example.com/embed/pay/token?sig=abc",
+      }),
+    ).toThrow();
   });
 });

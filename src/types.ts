@@ -38,11 +38,16 @@ export type JsonValue =
  * The IVA the merchant computed for a whole line, sent only by a session with
  * `automaticTax.enabled: false`. `amount` is what is charged; `rate` labels it
  * and groups it, and is not checked against the amount.
+ *
+ * `rate` has at most 4 decimal places, `amount` at most 2; the server refuses
+ * anything finer with a 400.
  */
 export const checkoutItemTaxSchema = z.object({
   type: z.literal("IVA"),
-  rate: z.number().gt(0).lt(1),
-  amount: z.number(),
+  /** The rate, `0 < rate < 1`, at most 4 decimal places. */
+  rate: z.number().gt(0).lt(1).multipleOf(0.0001),
+  /** The amount, at most 2 decimal places. */
+  amount: z.number().min(0).max(1_000_000_000).multipleOf(0.01),
 });
 
 export type CheckoutItemTax = z.infer<typeof checkoutItemTaxSchema>;
@@ -265,7 +270,10 @@ export type CheckoutSessionCreateInput = {
    * the response carries a signed `iframeUrl`.
    */
   iframeAllowedOrigins?: string[];
-  /** Minutes until the session expires. Defaults to 30, at most 1,440. */
+  /**
+   * Minutes until the session expires. An integer from 5 to 1,440; defaults to
+   * 30.
+   */
   expiresInMinutes?: number;
 };
 

@@ -145,6 +145,36 @@ describe("CheckoutClient", () => {
     expect(header(call.init, "content-type")).toBeNull();
   });
 
+  test("rejects a baseUrl that would send the key in clear", () => {
+    expect(
+      () =>
+        new CheckoutClient({
+          apiKey: "sk_test",
+          baseUrl: "http://api.unopago.com",
+        }),
+    ).toThrow(/https/);
+    expect(
+      () => new CheckoutClient({ apiKey: "sk_test", baseUrl: "not a url" }),
+    ).toThrow(/absolute URL/);
+  });
+
+  test("allows http on loopback for local development", async () => {
+    const { fetch, calls } = recordingFetch(() =>
+      jsonResponse(checkoutSessionFixture),
+    );
+    const client = new CheckoutClient({
+      apiKey: "sk_test",
+      baseUrl: "http://localhost:4000/",
+      fetch,
+    });
+
+    await client.checkoutSessions.get(CHECKOUT_SESSION_ID);
+
+    expect(singleCall(calls).url).toBe(
+      `http://localhost:4000/v1/checkout-sessions/${CHECKOUT_SESSION_ID}`,
+    );
+  });
+
   test("maps the REST error envelope into CheckoutApiError", async () => {
     const body = {
       message: "La sesión ya no se puede cancelar.",
@@ -189,6 +219,29 @@ describe("CheckoutClient", () => {
       code: "BAD_REQUEST",
       message: "Teléfono inválido",
       issues: body.issues,
+    });
+  });
+
+  test("a malformed field does not discard the rest of the error envelope", async () => {
+    const body = {
+      message: "La validación de los datos de entrada falló",
+      code: "BAD_REQUEST",
+      data: null,
+      issues: [{ message: 42 }],
+    };
+    const { fetch } = recordingFetch(() => jsonResponse(body, 400));
+    const client = new CheckoutClient({ apiKey: "sk_test", fetch });
+
+    const error = await client.checkoutSessions
+      .create(createInput)
+      .catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      status: 400,
+      code: "BAD_REQUEST",
+      errorCode: null,
+      message: "La validación de los datos de entrada falló",
+      issues: null,
     });
   });
 

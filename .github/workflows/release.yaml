@@ -1,0 +1,62 @@
+name: Release
+
+# Publishing is opt-in through npm Trusted Publishing: configure this repo and
+# workflow as the package's trusted publisher, and npm accepts the OIDC token
+# from here instead of a long-lived NPM_TOKEN.
+#
+# The first version is published by hand with a token: npm only lets you
+# register a trusted publisher on a package that already exists. Then:
+# - a new trusted-publisher config expires if it does not complete a publish
+#   within two days;
+# - configs created after 2026-09-03 default to `npm stage publish`; mark
+#   "Allow npm publish" or the publish below returns 403;
+# - the job stays skipped while the repository is private, because provenance
+#   needs a public source.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    # Provenance needs a public source repo; the export starts private.
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+      # `npm publish` builds through the manifest's `prepublishOnly`.
+      - name: Publish the version if npm does not have it
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "@unopago/checkout-sdk@$VERSION" version >/dev/null 2>&1; then
+            echo "::notice::@unopago/checkout-sdk@$VERSION is already published"
+            exit 0
+          fi
+          if [[ "$VERSION" == *-* ]]; then
+            TAG=next
+          else
+            TAG=latest
+          fi
+          npm publish --access public --tag "$TAG"

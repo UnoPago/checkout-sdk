@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          # tsdown@0.23 needs Node >=22.18 to build; the floor is a consumer
+          # promise, tested below against the packed tarball.
+          node-version: 24
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm pack --pack-destination /tmp/checkout-sdk-pack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checkout-sdk-tarball
+          path: /tmp/checkout-sdk-pack/*.tgz
+
+  consumer:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["20.19.0", "22.12.0", "24"]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: checkout-sdk-tarball
+          path: /tmp/checkout-sdk-pack
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # `engines` promises require(esm) can load the ESM dist from the floor up.
+      - run: |
+          mkdir -p /tmp/consumer
+          cd /tmp/consumer
+          npm init -y
+          npm install /tmp/checkout-sdk-pack/*.tgz
+          node -e "require('@unopago/checkout-sdk'); require('@unopago/checkout-sdk/embed'); require('@unopago/checkout-sdk/webhooks')"

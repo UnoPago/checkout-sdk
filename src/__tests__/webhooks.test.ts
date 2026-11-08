@@ -100,6 +100,17 @@ describe("verifyCheckoutWebhookSignature", () => {
     }
   });
 
+  test("rejects an empty or whitespace-only secret", () => {
+    const payload = eventBody();
+    const header = sign(payload);
+
+    for (const secret of ["", "   "]) {
+      expect(() =>
+        verifyCheckoutWebhookSignature({ payload, header, secret }),
+      ).toThrow(InvalidWebhookSignatureError);
+    }
+  });
+
   test("rejects a bad signature", () => {
     const payload = eventBody();
 

@@ -4,6 +4,7 @@ import {
   type CheckoutEmbedMessage,
   type CheckoutEmbedMountOptions,
 } from "./embedTypes";
+import { isLoopbackHost } from "./hosts";
 
 /**
  * What `CheckoutPaymentForm` needs: scripts and forms for the payment form,
@@ -65,8 +66,13 @@ export function mountCheckoutEmbed(
 ): CheckoutEmbedHandle {
   // Throws on a malformed URL, before anything is mounted.
   const url = new URL(options.iframeUrl);
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new Error(`iframeUrl must use http or https, got ${url.protocol}`);
+  if (
+    url.protocol !== "https:" &&
+    !(url.protocol === "http:" && isLoopbackHost(url.hostname))
+  ) {
+    throw new Error(
+      `iframeUrl must use https (http is allowed only for loopback hosts), got ${url.protocol}`,
+    );
   }
   const expectedOrigin = url.origin;
 
@@ -76,6 +82,9 @@ export function mountCheckoutEmbed(
   iframe.style.border = "0px";
   iframe.setAttribute("referrerpolicy", "no-referrer");
   iframe.setAttribute("sandbox", CHECKOUT_EMBED_SANDBOX);
+  // The paid receipt's copy button needs the clipboard, and a cross-origin
+  // iframe only gets it when the parent delegates the permission.
+  iframe.setAttribute("allow", "clipboard-write");
 
   const onMessage = (event: MessageEvent) => {
     if (event.origin !== expectedOrigin) return;

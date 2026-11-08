@@ -89,6 +89,10 @@ function parseSignatureHeader(header: string): ParsedSignatureHeader {
 export function verifyCheckoutWebhookSignature(
   input: VerifyCheckoutWebhookSignatureInput,
 ): CheckoutWebhookEvent {
+  if (input.secret.trim() === "") {
+    throw new InvalidWebhookSignatureError("Webhook secret is empty.");
+  }
+
   const { timestampText, timestamp, signature } = parseSignatureHeader(
     input.header,
   );

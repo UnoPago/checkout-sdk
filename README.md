@@ -13,7 +13,8 @@ what it needs:
 | `@unopago/checkout-sdk/embed`    | Browser       | Mounting the iframe and the typed `postMessage` events      |
 | `@unopago/checkout-sdk/webhooks` | Node (server) | `checkout_session_*` signature verification and payloads    |
 
-Install with `npm install @unopago/checkout-sdk`.
+> **Status:** this package is not published to a registry yet. Until it is,
+> build it from source (see [Development](#development)).
 
 ## REST client
 
@@ -126,11 +127,17 @@ const secret = process.env.UNOPAGO_WEBHOOK_SECRET;
 if (!secret) throw new Error("UNOPAGO_WEBHOOK_SECRET is not set");
 
 app.post("/webhooks/unopago", express.raw({ type: "*/*" }), (req, res) => {
-  const event = verifyCheckoutWebhookSignature({
-    payload: req.body, // Buffer | string — the RAW body, before JSON.parse
-    header: req.header("Webhook-Signature") ?? "",
-    secret,
-  });
+  let event: ReturnType<typeof verifyCheckoutWebhookSignature>;
+  try {
+    event = verifyCheckoutWebhookSignature({
+      payload: req.body, // Buffer | string — the RAW body, before JSON.parse
+      header: req.header("Webhook-Signature") ?? "",
+      secret,
+    });
+  } catch {
+    // InvalidWebhookSignatureError, SyntaxError or ZodError: reject the POST.
+    return res.sendStatus(400);
+  }
 
   if (!event.known) {
     // A future event type: acknowledge it and ignore it.
@@ -178,6 +185,3 @@ pnpm lint
 pnpm test
 pnpm build
 ```
-
-This repository is exported from UnoPago's monorepo; pull requests are synced
-back into it.

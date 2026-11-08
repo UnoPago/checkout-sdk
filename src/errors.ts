@@ -9,21 +9,28 @@ export type CheckoutApiIssue = {
 };
 
 const checkoutApiErrorBodySchema = z.object({
-  message: z.string().optional(),
-  code: z.string().optional(),
+  // Each field catches on its own: one unexpected shape degrades to a null
+  // field instead of discarding `code` and `errorCode` with it.
+  message: z.string().optional().catch(undefined),
+  code: z.string().optional().catch(undefined),
   data: z
     .object({
-      errorCode: z.string().optional(),
+      errorCode: z.string().optional().catch(undefined),
     })
-    .optional(),
+    .optional()
+    .catch(undefined),
   issues: z
     .array(
       z.object({
         message: z.string().min(1),
-        path: z.array(z.union([z.string(), z.number()])).optional(),
+        path: z
+          .array(z.union([z.string(), z.number()]))
+          .optional()
+          .catch(undefined),
       }),
     )
-    .optional(),
+    .optional()
+    .catch(undefined),
 });
 
 /**
