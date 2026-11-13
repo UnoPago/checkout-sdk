@@ -68,6 +68,42 @@ describe("verifyCheckoutWebhookSignature", () => {
     expect(event.data.checkoutSession.invoiceId).toBeNull();
   });
 
+  test("keeps the connected account a platform's event names", () => {
+    for (const eventType of [
+      "checkout_session_paid",
+      "checkout_session_expired",
+      "checkout_session_canceled",
+      "invoice_created",
+    ]) {
+      const payload = JSON.stringify({
+        ...checkoutWebhookEventFixture(eventType, {
+          checkoutSession: checkoutSessionWebhookPayloadFixture,
+        }),
+        account: "acc_r42",
+      });
+
+      const event = verifyCheckoutWebhookSignature({
+        payload,
+        header: sign(payload),
+        secret: SECRET,
+      });
+
+      expect(event.account).toBe("acc_r42");
+    }
+  });
+
+  test("leaves account undefined on an account's own event", () => {
+    const payload = eventBody("checkout_session_paid");
+
+    const event = verifyCheckoutWebhookSignature({
+      payload,
+      header: sign(payload),
+      secret: SECRET,
+    });
+
+    expect(event.account).toBeUndefined();
+  });
+
   test("accepts the raw body as a Buffer", () => {
     const payload = eventBody("checkout_session_paid");
 

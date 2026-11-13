@@ -1,6 +1,6 @@
 {
   "name": "@unopago/checkout-sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Typed client for UnoPago Checkout: REST checkout sessions, the embedded iframe and webhook signature verification.",
   "license": "MIT",
   "author": "UnoPago",

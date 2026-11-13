@@ -147,6 +147,8 @@ app.post("/webhooks/unopago", express.raw({ type: "*/*" }), (req, res) => {
   switch (event.eventType) {
     case "checkout_session_paid":
       // event.data.checkoutSession.externalId, .invoiceId, .paymentId, ...
+      // event.account: the connected account it happened in, when a
+      // platform's "Cuentas conectadas" endpoint receives it; else undefined.
       break;
     case "checkout_session_expired":
     case "checkout_session_canceled":

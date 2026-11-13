@@ -40,12 +40,19 @@ const checkoutSessionWebhookDataSchema = z.object({
 });
 
 /**
+ * The connected account an event happened in, on the webhooks a platform's
+ * "Cuentas conectadas" endpoints receive. Absent on an account's own events.
+ */
+const connectedAccountSchema = z.string().optional();
+
+/**
  * The envelope every UnoPago webhook shares. `createdAt` is ISO 8601. The
  * typed events below narrow `eventType` and `data`.
  */
 export const checkoutWebhookEnvelopeSchema = z.object({
   id: z.string(),
   eventType: z.string(),
+  account: connectedAccountSchema,
   createdAt: z.iso.datetime(),
   data: z.unknown(),
 });
@@ -58,6 +65,7 @@ export type CheckoutWebhookEnvelope = z.infer<
 export const checkoutSessionPaidEventSchema = z.object({
   id: z.string(),
   eventType: z.literal("checkout_session_paid"),
+  account: connectedAccountSchema,
   createdAt: z.iso.datetime(),
   data: checkoutSessionWebhookDataSchema,
 });
@@ -70,6 +78,7 @@ export type CheckoutSessionPaidEvent = z.infer<
 export const checkoutSessionExpiredEventSchema = z.object({
   id: z.string(),
   eventType: z.literal("checkout_session_expired"),
+  account: connectedAccountSchema,
   createdAt: z.iso.datetime(),
   data: checkoutSessionWebhookDataSchema,
 });
@@ -82,6 +91,7 @@ export type CheckoutSessionExpiredEvent = z.infer<
 export const checkoutSessionCanceledEventSchema = z.object({
   id: z.string(),
   eventType: z.literal("checkout_session_canceled"),
+  account: connectedAccountSchema,
   createdAt: z.iso.datetime(),
   data: checkoutSessionWebhookDataSchema,
 });
