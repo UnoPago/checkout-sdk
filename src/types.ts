@@ -99,8 +99,10 @@ export type CheckoutSessionBase = {
   /** The items' net total, before IVA. */
   subtotal: number;
   /**
-   * The account's IVA rate when the session was created, applied to the
-   * non-`exento` items. `null` when the account applies none. Without
+   * The general IVA rate (`0.16`) when the session carries IVA: a product
+   * line is taxed at its product's own rate, which may be another one, and
+   * every other non-`exento` line at this one. `null` when the account applies
+   * none. Without
    * `automaticTax`, the rate your lines' `taxes` share, or `null` when no line
    * has any or they use more than one: `ivaBreakdown` lists them.
    */
@@ -243,8 +245,9 @@ export type CheckoutSessionCreateInput = {
    */
   currency: CheckoutCurrency;
   /**
-   * Who computes the IVA. Left out or `true`: UnoPago adds your account's IVA
-   * to the non-`exento` lines. `false`: you send each line's IVA in
+   * Who computes the IVA. Left out or `true`: UnoPago adds IVA to the
+   * non-`exento` lines, a product line at its product's rate and any other at
+   * 16 %. `false`: you send each line's IVA in
    * `items[].taxes`, and the order can't be fiscally printed or emitted.
    */
   automaticTax?: { enabled: boolean };
