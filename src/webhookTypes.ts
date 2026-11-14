@@ -100,10 +100,87 @@ export type CheckoutSessionCanceledEvent = z.infer<
   typeof checkoutSessionCanceledEventSchema
 >;
 
+/**
+ * A payout of what UnoPago collected for the account. Amounts are bolívares,
+ * as decimal strings; `paymentIds` are the payments it covers, the ids
+ * `payment_received` carries.
+ */
+export const settlementWebhookPayloadSchema = z.object({
+  id: z.string(),
+  status: z.enum(["COMPLETED", "FAILED", "CANCELED"]),
+  currency: z.literal("VES"),
+  totalAmount: z.string(),
+  totalFees: z.string(),
+  netAmount: z.string(),
+  paymentCount: z.number().int(),
+  paymentIds: z.array(z.string()),
+  processingBank: z.string(),
+  bankReference: z.string().nullable(),
+  bankAccount: z
+    .object({ bankCode: z.string(), accountNumberLast4: z.string() })
+    .nullable(),
+  processedAt: z.iso.datetime().nullable(),
+});
+
+export type SettlementWebhookPayload = z.infer<
+  typeof settlementWebhookPayloadSchema
+>;
+
+const settlementWebhookDataSchema = z.object({
+  settlement: settlementWebhookPayloadSchema,
+});
+
+/** UnoPago paid out to the account's bank account. */
+export const settlementCompletedEventSchema = z.object({
+  id: z.string(),
+  eventType: z.literal("settlement_completed"),
+  account: connectedAccountSchema,
+  createdAt: z.iso.datetime(),
+  data: settlementWebhookDataSchema,
+});
+
+export type SettlementCompletedEvent = z.infer<
+  typeof settlementCompletedEventSchema
+>;
+
+/**
+ * A payout could not be completed (the bank refused it, or UnoPago could not
+ * confirm it); the money stays owed.
+ */
+export const settlementFailedEventSchema = z.object({
+  id: z.string(),
+  eventType: z.literal("settlement_failed"),
+  account: connectedAccountSchema,
+  createdAt: z.iso.datetime(),
+  data: settlementWebhookDataSchema,
+});
+
+export type SettlementFailedEvent = z.infer<typeof settlementFailedEventSchema>;
+
+/**
+ * A payout UnoPago canceled before sending it (the bank refused it, or it was
+ * held to review its payments): it will never be paid. `paymentIds` are paid
+ * in a later payout once UnoPago clears them.
+ */
+export const settlementCanceledEventSchema = z.object({
+  id: z.string(),
+  eventType: z.literal("settlement_canceled"),
+  account: connectedAccountSchema,
+  createdAt: z.iso.datetime(),
+  data: settlementWebhookDataSchema,
+});
+
+export type SettlementCanceledEvent = z.infer<
+  typeof settlementCanceledEventSchema
+>;
+
 export type KnownCheckoutWebhookEvent =
   | (CheckoutSessionPaidEvent & { known: true })
   | (CheckoutSessionExpiredEvent & { known: true })
-  | (CheckoutSessionCanceledEvent & { known: true });
+  | (CheckoutSessionCanceledEvent & { known: true })
+  | (SettlementCompletedEvent & { known: true })
+  | (SettlementFailedEvent & { known: true })
+  | (SettlementCanceledEvent & { known: true });
 
 /**
  * An event type this SDK version does not know. It parses instead of throwing

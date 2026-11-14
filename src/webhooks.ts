@@ -3,6 +3,9 @@ import {
   checkoutSessionCanceledEventSchema,
   checkoutSessionExpiredEventSchema,
   checkoutSessionPaidEventSchema,
+  settlementCompletedEventSchema,
+  settlementFailedEventSchema,
+  settlementCanceledEventSchema,
   checkoutWebhookEnvelopeSchema,
   type CheckoutWebhookEvent,
 } from "./webhookTypes";
@@ -136,6 +139,12 @@ export function verifyCheckoutWebhookSignature(
       return { known: true, ...checkoutSessionExpiredEventSchema.parse(raw) };
     case "checkout_session_canceled":
       return { known: true, ...checkoutSessionCanceledEventSchema.parse(raw) };
+    case "settlement_completed":
+      return { known: true, ...settlementCompletedEventSchema.parse(raw) };
+    case "settlement_failed":
+      return { known: true, ...settlementFailedEventSchema.parse(raw) };
+    case "settlement_canceled":
+      return { known: true, ...settlementCanceledEventSchema.parse(raw) };
     default:
       return { known: false, ...envelope };
   }

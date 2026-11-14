@@ -153,6 +153,16 @@ app.post("/webhooks/unopago", express.raw({ type: "*/*" }), (req, res) => {
     case "checkout_session_expired":
     case "checkout_session_canceled":
       break;
+    case "settlement_completed":
+      // event.data.settlement.netAmount, .paymentIds: UnoPago paid the account
+      break;
+    case "settlement_failed":
+      // the payout could not be completed (the bank refused it, or UnoPago
+      // could not confirm it); the money stays owed
+      break;
+    case "settlement_canceled":
+      // never paid: event.data.settlement.paymentIds move to a later payout
+      break;
   }
 
   res.sendStatus(200);

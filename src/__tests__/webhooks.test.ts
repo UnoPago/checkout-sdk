@@ -104,6 +104,77 @@ describe("verifyCheckoutWebhookSignature", () => {
     expect(event.account).toBeUndefined();
   });
 
+  test("parses a connected account's settlement events", () => {
+    const settlement = {
+      id: "set_7f3",
+      status: "COMPLETED",
+      currency: "VES",
+      totalAmount: "480.00",
+      totalFees: "4.80",
+      netAmount: "475.20",
+      paymentCount: 1,
+      paymentIds: ["cm0000000000000000000pa01"],
+      processingBank: "BNC",
+      bankReference: "00123456",
+      bankAccount: { bankCode: "0134", accountNumberLast4: "4421" },
+      processedAt: "2026-11-12T20:00:00.000Z",
+    };
+    for (const [eventType, data] of [
+      ["settlement_completed", { settlement }],
+      [
+        "settlement_failed",
+        {
+          settlement: {
+            ...settlement,
+            status: "FAILED",
+            bankReference: null,
+            processedAt: null,
+          },
+        },
+      ],
+      [
+        "settlement_canceled",
+        {
+          settlement: {
+            ...settlement,
+            status: "CANCELED",
+            bankReference: null,
+            processedAt: null,
+          },
+        },
+      ],
+    ] as const) {
+      const payload = JSON.stringify({
+        ...checkoutWebhookEventFixture(eventType, data),
+        account: "acc_r42",
+      });
+
+      const event = verifyCheckoutWebhookSignature({
+        payload,
+        header: sign(payload),
+        secret: SECRET,
+      });
+
+      if (!event.known) throw new Error("expected a known event");
+      expect(event.account).toBe("acc_r42");
+      if (event.eventType === "settlement_completed") {
+        expect(event.data.settlement.netAmount).toBe("475.20");
+        expect(event.data.settlement.paymentIds).toEqual([
+          "cm0000000000000000000pa01",
+        ]);
+      } else if (event.eventType === "settlement_failed") {
+        expect(event.data.settlement.status).toBe("FAILED");
+      } else if (event.eventType === "settlement_canceled") {
+        expect(event.data.settlement.status).toBe("CANCELED");
+        expect(event.data.settlement.paymentIds).toEqual([
+          "cm0000000000000000000pa01",
+        ]);
+      } else {
+        throw new Error(`unexpected event ${event.eventType}`);
+      }
+    }
+  });
+
   test("accepts the raw body as a Buffer", () => {
     const payload = eventBody("checkout_session_paid");
 
