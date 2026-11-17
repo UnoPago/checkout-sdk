@@ -122,8 +122,11 @@ export type CheckoutSessionBase = {
   /** The session's currency. */
   currency: CheckoutCurrency;
   /**
-   * What the buyer pays in bolívares: `amount` times `exchangeRate`, the rate
-   * fixed when the session is created. Equal to `amount` for `VES`.
+   * What the buyer pays in bolívares: `amount` times `exchangeRate`. While the
+   * session is `open` it follows today's BCV rate, so read it again rather
+   * than keeping the value from create. Once a payment claims the session it
+   * is what that payment charges; once it closes it stays at the rate of the
+   * day it closed. Equal to `amount` for `VES`.
    */
   amountVes: number;
   /** Bolívares per unit of `currency`. `null` for `VES`. */
