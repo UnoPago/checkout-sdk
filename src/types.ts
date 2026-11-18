@@ -264,6 +264,12 @@ export type CheckoutSessionCreateInput = {
   buyerName?: string;
   /** Prefills the payment form. */
   buyerEmail?: string;
+  /** The buyer's cédula or RIF (e.g. `V12345678`); prefills the payment form. */
+  buyerNationalId?: string;
+  /** The phone affiliated to the buyer's bank; prefills the payment form. */
+  buyerPhoneNumber?: string;
+  /** The buyer's bank code (e.g. `0105`); prefills the payment form. */
+  buyerBankCode?: string;
   /** Your own data, stored with the session. */
   metadata?: Record<string, JsonValue>;
   /** Where the buyer is sent after paying. */
