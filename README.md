@@ -145,8 +145,12 @@ app.post("/webhooks/unopago", express.raw({ type: "*/*" }), (req, res) => {
   }
 
   switch (event.eventType) {
+    case "checkout_session_partially_paid":
+      // a part was paid; the rest is still owed: event.data.checkoutSession
+      // .amountPaid, .amountRemaining (in its currency), .paymentIds
+      break;
     case "checkout_session_paid":
-      // event.data.checkoutSession.externalId, .invoiceId, .paymentId, ...
+      // event.data.checkoutSession.externalId, .invoiceId, .paymentIds, ...
       // event.account: the connected account it happened in, when a
       // platform's "Cuentas conectadas" endpoint receives it; else undefined.
       break;
@@ -182,11 +186,20 @@ The verifier:
   or a stale or future timestamp, a `SyntaxError` when the body is not JSON,
   and a `ZodError` when it does not match the documented envelope.
 
-`checkout_session_paid` is the fulfilment signal: it is the event where
-`invoiceId` and `paymentId` are non-null. All three events carry the full
-session, your `externalId` included, so an expired or canceled event can close
-your own order as well. Re-read the session before acting if ordering matters;
-webhooks are notifications, not state.
+Fulfil on the event type, never on which fields are set:
+`checkout_session_paid` is the fulfilment signal. A session can be paid in
+parts: each checkout payment that leaves part to pay sends
+`checkout_session_partially_paid`, and the payment that closes the session
+sends `checkout_session_paid`. A payment you record into its invoice from the
+panel sends no checkout event of its own, but it counts in `amountPaid` and
+`paymentIds`, and if it closes the invoice the session turns `PAID`. All four events carry the full session in the same
+shape: your `externalId`, `amountPaid` and `amountRemaining` (in the session's
+currency), and `paymentIds`, every payment applied to it, oldest first. A
+canceled session that was paid in part keeps its `amountPaid` and
+`paymentIds`: that money stays as your customer's credit. `paymentId` is deprecated and will be
+removed: use `paymentIds`. The session is read when the event is sent, so
+re-read it before acting if ordering matters; webhooks are notifications, not
+state.
 
 ## Development
 

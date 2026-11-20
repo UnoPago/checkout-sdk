@@ -3,6 +3,7 @@ import {
   checkoutSessionCanceledEventSchema,
   checkoutSessionExpiredEventSchema,
   checkoutSessionPaidEventSchema,
+  checkoutSessionPartiallyPaidEventSchema,
   settlementCompletedEventSchema,
   settlementFailedEventSchema,
   settlementCanceledEventSchema,
@@ -135,6 +136,11 @@ export function verifyCheckoutWebhookSignature(
   switch (envelope.eventType) {
     case "checkout_session_paid":
       return { known: true, ...checkoutSessionPaidEventSchema.parse(raw) };
+    case "checkout_session_partially_paid":
+      return {
+        known: true,
+        ...checkoutSessionPartiallyPaidEventSchema.parse(raw),
+      };
     case "checkout_session_expired":
       return { known: true, ...checkoutSessionExpiredEventSchema.parse(raw) };
     case "checkout_session_canceled":

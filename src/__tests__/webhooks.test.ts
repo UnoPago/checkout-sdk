@@ -191,6 +191,7 @@ describe("verifyCheckoutWebhookSignature", () => {
   test("parses each known checkout event type", () => {
     for (const eventType of [
       "checkout_session_paid",
+      "checkout_session_partially_paid",
       "checkout_session_expired",
       "checkout_session_canceled",
     ]) {

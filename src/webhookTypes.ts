@@ -19,9 +19,22 @@ export type CheckoutSessionProvider = z.infer<
 export type CheckoutSessionWebhookPayload = CheckoutSessionBase & {
   /** Where UnoPago created the session. */
   provider: CheckoutSessionProvider;
-  /** The invoice a paid session issued. `null` on expired and canceled ones. */
+  /**
+   * The session's invoice, issued by its first payment: set on a paid session,
+   * and on one paid in part. `null` while nothing was paid.
+   */
   invoiceId: string | null;
-  /** The payment a paid session recorded. `null` on expired and canceled ones. */
+  /**
+   * The payments applied to its invoice, oldest first, the ids
+   * `payment_received` carries: one per part of a session paid in parts, and
+   * a payment recorded into its invoice outside the checkout too. Empty until
+   * a first payment.
+   */
+  paymentIds: string[];
+  /**
+   * @deprecated Will be removed: use `paymentIds`. The payment that closed a
+   * paid session, `null` until it is paid in full.
+   */
   paymentId: string | null;
   /** Reserved, for telling a test sale from a real one. Always `false` today. */
   test: boolean;
@@ -31,6 +44,7 @@ export const checkoutSessionWebhookPayloadSchema =
   checkoutSessionBaseSchema.extend({
     provider: checkoutSessionProviderSchema,
     invoiceId: z.string().nullable(),
+    paymentIds: z.array(z.string()),
     paymentId: z.string().nullable(),
     test: z.boolean(),
   }) satisfies z.ZodType<CheckoutSessionWebhookPayload>;
@@ -61,7 +75,7 @@ export type CheckoutWebhookEnvelope = z.infer<
   typeof checkoutWebhookEnvelopeSchema
 >;
 
-/** A session turned `PAID` and the sale was committed. */
+/** A session turned `PAID`: its last payment closed its invoice. */
 export const checkoutSessionPaidEventSchema = z.object({
   id: z.string(),
   eventType: z.literal("checkout_session_paid"),
@@ -72,6 +86,24 @@ export const checkoutSessionPaidEventSchema = z.object({
 
 export type CheckoutSessionPaidEvent = z.infer<
   typeof checkoutSessionPaidEventSchema
+>;
+
+/**
+ * A payment paid part of a session and left the rest to pay: one per such
+ * payment, with the session still `OPEN`. The payment that closes it sends
+ * `checkout_session_paid` instead. The session is read when the event is sent,
+ * so a late delivery can already show it `PAID`: trust `eventType`.
+ */
+export const checkoutSessionPartiallyPaidEventSchema = z.object({
+  id: z.string(),
+  eventType: z.literal("checkout_session_partially_paid"),
+  account: connectedAccountSchema,
+  createdAt: z.iso.datetime(),
+  data: checkoutSessionWebhookDataSchema,
+});
+
+export type CheckoutSessionPartiallyPaidEvent = z.infer<
+  typeof checkoutSessionPartiallyPaidEventSchema
 >;
 
 /** An `OPEN` session passed `expiresAt`, or a late bank rejection expired it. */
@@ -176,6 +208,7 @@ export type SettlementCanceledEvent = z.infer<
 
 export type KnownCheckoutWebhookEvent =
   | (CheckoutSessionPaidEvent & { known: true })
+  | (CheckoutSessionPartiallyPaidEvent & { known: true })
   | (CheckoutSessionExpiredEvent & { known: true })
   | (CheckoutSessionCanceledEvent & { known: true })
   | (SettlementCompletedEvent & { known: true })

@@ -32,6 +32,8 @@ export const checkoutSessionBaseFixture: CheckoutSessionBase = {
   amountVes: 5234.5,
   exchangeRate: 180.5,
   exchangeRateDate: "2026-11-01T00:00:00.000Z",
+  amountPaid: 0,
+  amountRemaining: 29,
   reference: "Order 10293",
   description: "October tuition",
   buyerName: "María Pérez",
@@ -54,6 +56,7 @@ export const checkoutSessionWebhookPayloadFixture: CheckoutSessionWebhookPayload
     ...checkoutSessionBaseFixture,
     provider: "API",
     invoiceId: null,
+    paymentIds: [],
     paymentId: null,
     test: false,
   };

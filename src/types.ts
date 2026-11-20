@@ -133,6 +133,18 @@ export type CheckoutSessionBase = {
   exchangeRate: number | null;
   /** The BCV rate's date, ISO 8601. `null` for `VES`. */
   exchangeRateDate: string | null;
+  /**
+   * What the session has been paid so far, in `currency`, on `amount` (fees
+   * not included). A session can be paid in parts; a payment recorded into its
+   * invoice outside the checkout counts too, and a canceled session still
+   * counts what it was paid.
+   */
+  amountPaid: number;
+  /**
+   * `amount` minus `amountPaid`, never below 0, whatever the `status`: read
+   * `status` to know whether it can still be paid.
+   */
+  amountRemaining: number;
   /** A reference shown to the buyer, when one was sent. */
   reference: string | null;
   /** A description shown to the buyer, when one was sent. */
@@ -172,6 +184,8 @@ export const checkoutSessionBaseSchema = z.object({
   amountVes: z.number(),
   exchangeRate: z.number().nullable(),
   exchangeRateDate: z.iso.datetime().nullable(),
+  amountPaid: z.number(),
+  amountRemaining: z.number(),
   reference: z.string().nullable(),
   description: z.string().nullable(),
   buyerName: z.string().nullable(),
