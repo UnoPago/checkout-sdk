@@ -104,6 +104,56 @@ describe("verifyCheckoutWebhookSignature", () => {
     expect(event.account).toBeUndefined();
   });
 
+  test("parses a vendor's payout, and what an account's own payout owed to vendors", () => {
+    const settlement = {
+      id: "set_7f4",
+      status: "COMPLETED",
+      currency: "VES",
+      totalAmount: "360.00",
+      totalFees: "0.00",
+      totalSplits: "0.00",
+      netAmount: "360.00",
+      vendor: { id: "cm0000000000000000000ve01", externalId: "rest-42" },
+      paymentCount: 1,
+      paymentIds: ["cm0000000000000000000pa01"],
+      processingBank: "BNC",
+      bankReference: "00123457",
+      bankAccount: { bankCode: "0134", accountNumberLast4: "4421" },
+      processedAt: "2026-11-12T20:00:00.000Z",
+    };
+    const parse = (data: { settlement: Record<string, unknown> }) => {
+      const payload = JSON.stringify(
+        checkoutWebhookEventFixture("settlement_completed", data),
+      );
+      const event = verifyCheckoutWebhookSignature({
+        payload,
+        header: sign(payload),
+        secret: SECRET,
+      });
+      if (!event.known || event.eventType !== "settlement_completed") {
+        throw new Error("expected settlement_completed");
+      }
+      return event.data.settlement;
+    };
+
+    expect(parse({ settlement }).vendor).toEqual({
+      id: "cm0000000000000000000ve01",
+      externalId: "rest-42",
+    });
+    const own = parse({
+      settlement: {
+        ...settlement,
+        totalAmount: "480.00",
+        totalFees: "12.00",
+        totalSplits: "440.00",
+        netAmount: "28.00",
+        vendor: null,
+      },
+    });
+    expect(own.vendor).toBeNull();
+    expect(own.totalSplits).toBe("440.00");
+  });
+
   test("parses a connected account's settlement events", () => {
     const settlement = {
       id: "set_7f3",
@@ -158,6 +208,10 @@ describe("verifyCheckoutWebhookSignature", () => {
       if (!event.known) throw new Error("expected a known event");
       expect(event.account).toBe("acc_r42");
       if (event.eventType === "settlement_completed") {
+        // Sent before `totalSplits` and `vendor` existed: no split, and the
+        // account's own payout.
+        expect(event.data.settlement.totalSplits).toBe("0");
+        expect(event.data.settlement.vendor).toBeNull();
         expect(event.data.settlement.netAmount).toBe("475.20");
         expect(event.data.settlement.paymentIds).toEqual([
           "cm0000000000000000000pa01",

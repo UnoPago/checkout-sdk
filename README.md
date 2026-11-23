@@ -176,6 +176,10 @@ app.post("/webhooks/unopago", express.raw({ type: "*/*" }), (req, res) => {
       break;
     case "settlement_completed":
       // event.data.settlement.netAmount, .paymentIds: UnoPago paid the account
+      // .vendor: set ({ id, externalId }) when it paid one of your vendors
+      // instead; .totalSplits: what of your own payout's payments was theirs.
+      // If you split orders, check .vendor before counting netAmount as
+      // yours (this field needs version 1.5.0 or later).
       break;
     case "settlement_failed":
       // the payout could not be completed (the bank refused it, or UnoPago

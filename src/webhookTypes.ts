@@ -136,6 +136,11 @@ export type CheckoutSessionCanceledEvent = z.infer<
  * A payout of what UnoPago collected for the account. Amounts are bolívares,
  * as decimal strings; `paymentIds` are the payments it covers, the ids
  * `payment_received` carries.
+ *
+ * `totalSplits` is the part of those payments owed to vendors, so
+ * `netAmount` is `totalAmount − totalFees − totalSplits`. A payout to one of
+ * your vendors carries `vendor` (`null` on your own): UnoPago does not notify
+ * a vendor, these events are how you learn what became of its payout.
  */
 export const settlementWebhookPayloadSchema = z.object({
   id: z.string(),
@@ -143,7 +148,14 @@ export const settlementWebhookPayloadSchema = z.object({
   currency: z.literal("VES"),
   totalAmount: z.string(),
   totalFees: z.string(),
+  // An event from before these two existed carries neither: no split, and
+  // the account's own payout.
+  totalSplits: z.string().default("0"),
   netAmount: z.string(),
+  vendor: z
+    .object({ id: z.string(), externalId: z.string().nullable() })
+    .nullable()
+    .default(null),
   paymentCount: z.number().int(),
   paymentIds: z.array(z.string()),
   processingBank: z.string(),
