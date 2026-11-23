@@ -96,11 +96,24 @@ class CheckoutSessionsResource {
    * Creates a session, or returns the existing one when `externalId` was sent
    * before.
    */
-  create(input: CheckoutSessionCreateInput): Promise<CheckoutSession> {
-    return this.request(
+  async create(input: CheckoutSessionCreateInput): Promise<CheckoutSession> {
+    const session = await this.request(
       { method: "POST", path: "/v1/checkout-sessions", body: input },
       checkoutSessionSchema,
     );
+    // An API from before `splits` existed ignores the field and creates a
+    // plain session: paid, it would leave everything to the account and
+    // nothing to its vendors. The API of this version refuses instead.
+    if (
+      input.splits !== undefined &&
+      input.splits.length > 0 &&
+      session.splits.length === 0
+    ) {
+      throw new Error(
+        `The API created session ${session.id} without its splits: it does not support \`splits\` yet. Cancel the session; a payment would not be split.`,
+      );
+    }
+    return session;
   }
 
   /** One of your account's public-API sessions. */

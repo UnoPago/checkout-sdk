@@ -37,6 +37,23 @@ await checkout.checkoutSessions.list({ status: "PAID", page: 1 });
 await checkout.checkoutSessions.cancel(session.id);
 ```
 
+To pay vendors a part of the order, send `splits` (each an `amount` in the
+session's `currency` for one of your vendors' ids; up to 10, each vendor once):
+
+```ts
+await checkout.checkoutSessions.create({
+  currency: "USD",
+  items: [{ description: "Combo 3", quantity: 1, amount: 12 }],
+  splits: [{ vendor: "cm9x2k4q80001s6v1h3d7e2ab", amount: 9 }],
+});
+```
+
+UnoPago pays each vendor its part and you keep the rest, paying UnoPago's fee
+on the whole charge. A session with `splits` is paid by C2P or immediate debit
+only, in one payment. Every session carries its `splits` back (empty when it
+has none), each with the vendor's `externalId` and, once the session is `PAID`,
+its `amountVes`: the bolívares UnoPago pays that vendor.
+
 `CheckoutClientOptions`:
 
 - `apiKey` (required): an API key from the console, under **Configuración →

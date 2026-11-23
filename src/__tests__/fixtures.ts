@@ -34,6 +34,14 @@ export const checkoutSessionBaseFixture: CheckoutSessionBase = {
   exchangeRateDate: "2026-11-01T00:00:00.000Z",
   amountPaid: 0,
   amountRemaining: 29,
+  splits: [
+    {
+      vendor: "cm9x2k4q80001s6v1h3d7e2ab",
+      externalId: "rest-42",
+      amount: 9,
+      amountVes: null,
+    },
+  ],
   reference: "Order 10293",
   description: "October tuition",
   buyerName: "María Pérez",

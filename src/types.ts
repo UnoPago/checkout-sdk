@@ -71,6 +71,21 @@ export const checkoutSessionItemSchema = z.object({
 
 export type CheckoutSessionItem = z.infer<typeof checkoutSessionItemSchema>;
 
+/** A vendor's part of a session's order. */
+export type CheckoutSessionSplit = {
+  /** The vendor's id. */
+  vendor: string;
+  /** Your own id for the vendor, when it has one. */
+  externalId: string | null;
+  /** The vendor's part of the order, in the session's `currency`. */
+  amount: number;
+  /**
+   * The same part in bolívares, at the rate of the payment that paid the
+   * session: what UnoPago pays the vendor. `null` until the session is `PAID`.
+   */
+  amountVes: number | null;
+};
+
 /**
  * The session fields both the REST endpoints and the `checkout_session_*`
  * webhook payloads carry. Dates are ISO 8601 strings on the wire; amounts are
@@ -145,6 +160,11 @@ export type CheckoutSessionBase = {
    * `status` to know whether it can still be paid.
    */
   amountRemaining: number;
+  /**
+   * The parts of the order owed to vendors: the `splits` the session was
+   * created with, in no particular order. Empty for a session without them.
+   */
+  splits: CheckoutSessionSplit[];
   /** A reference shown to the buyer, when one was sent. */
   reference: string | null;
   /** A description shown to the buyer, when one was sent. */
@@ -186,6 +206,18 @@ export const checkoutSessionBaseSchema = z.object({
   exchangeRateDate: z.iso.datetime().nullable(),
   amountPaid: z.number(),
   amountRemaining: z.number(),
+  // An API or a webhook from before `splits` existed does not send it: read
+  // as none, so this version works against both.
+  splits: z
+    .array(
+      z.object({
+        vendor: z.string(),
+        externalId: z.string().nullable(),
+        amount: z.number(),
+        amountVes: z.number().nullable(),
+      }),
+    )
+    .default([]),
   reference: z.string().nullable(),
   description: z.string().nullable(),
   buyerName: z.string().nullable(),
@@ -252,8 +284,8 @@ export type CheckoutSessionCreateInput = {
   /**
    * Your id for this session. Sending the same `externalId` again returns the
    * existing session instead of creating another; with different items
-   * (`taxes` included), `automaticTax`, currency or iframe origins it is
-   * refused with `409 CONFLICT`.
+   * (`taxes` included), `automaticTax`, currency, iframe origins or `splits`
+   * it is refused with `409 CONFLICT`.
    */
   externalId?: string;
   /**
@@ -296,6 +328,14 @@ export type CheckoutSessionCreateInput = {
    * the response carries a signed `iframeUrl`.
    */
   iframeAllowedOrigins?: string[];
+  /**
+   * The parts of the order you owe to vendors, each an `amount` in `currency`
+   * for a `vendor` id. Up to 10, each vendor once. UnoPago pays every vendor
+   * its part and you keep the rest, paying UnoPago's fee on the whole charge.
+   * A session with `splits` is paid by C2P or immediate debit only, in one
+   * payment; the buyer is shown nothing about them.
+   */
+  splits?: { vendor: string; amount: number }[];
   /**
    * Minutes until the session expires. An integer from 5 to 1,440; defaults to
    * 30.

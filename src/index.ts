@@ -20,6 +20,7 @@ export {
   type CheckoutSessionItemInput,
   type CheckoutSessionList,
   type CheckoutSessionListInput,
+  type CheckoutSessionSplit,
   type CheckoutSessionStatus,
   type JsonValue,
 } from "./types";

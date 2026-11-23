@@ -75,6 +75,58 @@ describe("CheckoutClient", () => {
     expect(JSON.parse(body)).toEqual(createInput);
   });
 
+  test("create sends the splits as given", async () => {
+    const { fetch, calls } = recordingFetch(() =>
+      jsonResponse(checkoutSessionFixture),
+    );
+    const client = new CheckoutClient({ apiKey: "sk_test", fetch });
+    const splits = [{ vendor: "cm9x2k4q80001s6v1h3d7e2ab", amount: 9 }];
+
+    const session = await client.checkoutSessions.create({
+      ...createInput,
+      splits,
+    });
+
+    expect(session.splits).toEqual(checkoutSessionFixture.splits);
+    const body = singleCall(calls).init.body;
+    if (typeof body !== "string") {
+      throw new Error("expected the body to be a JSON string");
+    }
+    expect(JSON.parse(body)).toEqual({ ...createInput, splits });
+  });
+
+  // An API deployed before `splits` existed ignores the field: paid, that
+  // session would leave everything to the account.
+  test("create refuses a session the API created without the splits sent", async () => {
+    const { splits: _splits, ...withoutSplits } = checkoutSessionFixture;
+    const { fetch } = recordingFetch(() => jsonResponse(withoutSplits));
+    const client = new CheckoutClient({ apiKey: "sk_test", fetch });
+
+    await expect(
+      client.checkoutSessions.create({
+        ...createInput,
+        splits: [{ vendor: "cm9x2k4q80001s6v1h3d7e2ab", amount: 9 }],
+      }),
+    ).rejects.toThrow(
+      `The API created session ${CHECKOUT_SESSION_ID} without its splits`,
+    );
+    // Nothing to refuse when none were sent.
+    await expect(
+      client.checkoutSessions.create({ ...createInput, splits: [] }),
+    ).resolves.toMatchObject({ splits: [] });
+  });
+
+  // An API deployed before `splits` existed: the session has none.
+  test("a session the API sends without splits is read as having none", async () => {
+    const { splits: _splits, ...withoutSplits } = checkoutSessionFixture;
+    const { fetch } = recordingFetch(() => jsonResponse(withoutSplits));
+    const client = new CheckoutClient({ apiKey: "sk_test", fetch });
+
+    const session = await client.checkoutSessions.get(CHECKOUT_SESSION_ID);
+
+    expect(session.splits).toEqual([]);
+  });
+
   test("get sends the id in the path and no body", async () => {
     const { fetch, calls } = recordingFetch(() =>
       jsonResponse(checkoutSessionFixture),
