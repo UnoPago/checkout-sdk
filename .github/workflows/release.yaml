@@ -27,9 +27,30 @@ permissions:
   id-token: write
 
 jobs:
+  # Only a commit UnoPago exported releases. A pull request merged here is
+  # imported into UnoPago's repository first and comes back in a later export,
+  # so its version, and the moment it ships, are decided there.
+  origin:
+    runs-on: ubuntu-latest
+    outputs:
+      exported: ${{ steps.check.outputs.exported }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check
+        run: |
+          if [ "$(git log -1 --format=%ce)" = "oss@unopago.com" ] &&
+            grep -q '^Copybarista-Source-Rev: ' <<< "$(git log -1 --format=%B)"; then
+            echo "exported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$(git rev-parse --short HEAD) is not an export commit; nothing to release."
+            echo "exported=false" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
+    needs: origin
     # Provenance needs a public source repo; the export starts private.
-    if: github.event.repository.private == false
+    if: github.event.repository.private == false && needs.origin.outputs.exported == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
