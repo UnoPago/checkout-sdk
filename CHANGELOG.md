@@ -1,5 +1,11 @@
 # @unopago/checkout-sdk
 
+## 1.0.1
+
+### Patch Changes
+
+- The package now includes `CHANGELOG.md`.
+
 ## 1.0.0
 
 First public release.
