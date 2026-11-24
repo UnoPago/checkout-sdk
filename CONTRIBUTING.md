@@ -22,6 +22,7 @@ pnpm lint
 pnpm format
 pnpm test
 pnpm build
+pnpm check:package
 ```
 
 - Don't change `version` in `package.json`. Releases are cut by UnoPago.

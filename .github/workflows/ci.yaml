@@ -12,9 +12,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           # tsdown@0.23 needs Node >=22.18 to build; the floor is a consumer
           # promise, tested below against the packed tarball.
@@ -26,9 +26,11 @@ jobs:
       - run: pnpm format
       - run: pnpm test
       - run: pnpm build
+      # The packed tarball: exports, types and files as a consumer resolves them.
+      - run: pnpm check:package
       - run: pnpm pack --pack-destination /tmp/checkout-sdk-pack
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: checkout-sdk-tarball
           path: /tmp/checkout-sdk-pack/*.tgz
@@ -40,12 +42,12 @@ jobs:
       matrix:
         node-version: ["20.19.0", "22.12.0", "24"]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: checkout-sdk-tarball
           path: /tmp/checkout-sdk-pack
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: ${{ matrix.node-version }}
 

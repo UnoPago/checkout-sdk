@@ -13,8 +13,16 @@ what it needs:
 | `@unopago/checkout-sdk/embed`    | Browser       | Mounting the iframe and the typed `postMessage` events      |
 | `@unopago/checkout-sdk/webhooks` | Node (server) | `checkout_session_*` signature verification and payloads    |
 
-> **Status:** this package is not published to a registry yet. Until it is,
-> build it from source (see [Development](#development)).
+## Install
+
+```bash
+npm install @unopago/checkout-sdk
+```
+
+It needs Node.js 20.19 or later on 20.x, or 22.12 or later; `/embed` runs in
+the browser. It is an ES module that `require()` can also load on those
+versions, and it ships its own TypeScript types. Changes are listed in
+[CHANGELOG.md](./CHANGELOG.md).
 
 ## REST client
 
@@ -179,7 +187,7 @@ app.post("/webhooks/unopago", express.raw({ type: "*/*" }), (req, res) => {
       // .vendor: set ({ id, externalId }) when it paid one of your vendors
       // instead; .totalSplits: what of your own payout's payments was theirs.
       // If you split orders, check .vendor before counting netAmount as
-      // yours (this field needs version 1.5.0 or later).
+      // yours.
       break;
     case "settlement_failed":
       // the payout could not be completed (the bank refused it, or UnoPago
@@ -221,6 +229,16 @@ canceled session that was paid in part keeps its `amountPaid` and
 removed: use `paymentIds`. The session is read when the event is sent, so
 re-read it before acting if ordering matters; webhooks are notifications, not
 state.
+
+## Versioning
+
+The package follows [semantic versioning](https://semver.org):
+
+- **Patch:** fixes and documentation.
+- **Minor:** new methods, entry points, optional request fields, webhook event
+  types, and response fields the API already sends.
+- **Major:** removing or renaming an export or field, narrowing a type, making
+  a request field required, or raising the minimum Node.js version.
 
 ## Development
 

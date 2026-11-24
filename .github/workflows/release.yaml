@@ -1,11 +1,13 @@
 name: Release
 
-# Publishing is opt-in through npm Trusted Publishing: configure this repo and
-# workflow as the package's trusted publisher, and npm accepts the OIDC token
-# from here instead of a long-lived NPM_TOKEN.
+# Publishing goes through npm Trusted Publishing: this repository, this
+# workflow and the `npm` environment are the package's trusted publisher, and
+# npm accepts the OIDC token from here instead of a long-lived NPM_TOKEN. No npm
+# token exists for this package.
 #
-# The first version is published by hand with a token: npm only lets you
-# register a trusted publisher on a package that already exists. Then:
+# The first version was published by hand (an interactive `npm login` with
+# 2FA): npm only lets you register a trusted publisher on a package that
+# already exists. Then:
 # - a new trusted-publisher config expires if it does not complete a publish
 #   within two days;
 # - configs created after 2026-09-03 default to `npm stage publish`; mark
@@ -24,7 +26,6 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   # Only a commit UnoPago exported releases. A pull request merged here is
@@ -35,7 +36,7 @@ jobs:
     outputs:
       exported: ${{ steps.check.outputs.exported }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
       - id: check
         run: |
@@ -52,25 +53,47 @@ jobs:
     # Provenance needs a public source repo; the export starts private.
     if: github.event.repository.private == false && needs.origin.outputs.exported == 'true'
     runs-on: ubuntu-latest
+    # Part of the trusted-publisher config on npm, and limited to `main`.
+    environment: npm
+    permissions:
+      # The tag and the GitHub Release of each version.
+      contents: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
+          # A publish never restores a cache another run could have written.
+          package-manager-cache: false
+
+      - name: Check that npm can use trusted publishing
+        run: |
+          version=$(npm --version)
+          if [ "$(printf '%s\n' 11.5.1 "$version" | sort -V | head -n 1)" != 11.5.1 ]; then
+            echo "::error::npm $version cannot publish through trusted publishing; it needs 11.5.1 or later."
+            exit 1
+          fi
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
+      # `ci.yaml` does not gate this workflow, so the tarball is checked here,
+      # before the one step that cannot be undone.
+      - run: pnpm build
+      - run: pnpm check:package
 
-      # `npm publish` builds through the manifest's `prepublishOnly`.
+      # `npm publish` builds again through the manifest's `prepublishOnly`.
       - name: Publish the version if npm does not have it
+        id: publish
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if npm view "@unopago/checkout-sdk@$VERSION" version >/dev/null 2>&1; then
             echo "::notice::@unopago/checkout-sdk@$VERSION is already published"
             exit 0
@@ -81,3 +104,43 @@ jobs:
             TAG=latest
           fi
           npm publish --access public --tag "$TAG"
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+      # The tag marks the commit npm has: the one this run just published, or
+      # the one the version's provenance names. So a re-run finishes a release
+      # whose tag failed, and a later commit with the same version is never
+      # tagged. A version published by hand has no provenance: tag it by hand.
+      - name: Tag the version and create its GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.publish.outputs.version }}
+          PUBLISHED: ${{ steps.publish.outputs.published }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "v$VERSION already has its release."
+            exit 0
+          fi
+          if [ "$PUBLISHED" != true ]; then
+            url=$(npm view "@unopago/checkout-sdk@$VERSION" dist.attestations.url)
+            commit=""
+            if [ -n "$url" ]; then
+              commit=$(curl -fsSL "$url" |
+                jq -r '.attestations[] | select(.predicateType == "https://slsa.dev/provenance/v1") | .bundle.dsseEnvelope.payload' |
+                base64 -d | jq -r '.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit')
+            fi
+            if [ "$commit" != "$GITHUB_SHA" ]; then
+              echo "::notice::$VERSION was published from ${commit:-a commit without provenance}, not $GITHUB_SHA; not tagging it here."
+              exit 0
+            fi
+          fi
+          awk -v heading="## $VERSION" '$0 == heading { found = 1; next } found && /^## / { exit } found' \
+            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+            echo "See [CHANGELOG.md](CHANGELOG.md)." > "$RUNNER_TEMP/notes.md"
+          fi
+          prerelease=()
+          if [[ "$VERSION" == *-* ]]; then
+            prerelease=(--prerelease)
+          fi
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" "${prerelease[@]}"
